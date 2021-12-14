@@ -13,11 +13,13 @@ export function Simulator({
     twoClients,
     defaultIncommingLatency,
     defaultOutgoingLatency,
+    defaultNetworkSettingsCollapsed,
 }: {
     initStores: (rootStore: RootStore) => void
     twoClients?: boolean
     defaultIncommingLatency?: number
     defaultOutgoingLatency?: number
+    defaultNetworkSettingsCollapsed?: boolean
     children: (rootStore: RootStore) => JSX.Element
 }): JSX.Element | null {
     const serverStub = useMemo(() => {
@@ -34,6 +36,7 @@ export function Simulator({
         <>
             {ids.map((id) => (
                 <ConnectionHandler
+                    defaultNetworkSettingsCollapsed={defaultNetworkSettingsCollapsed}
                     defaultOutgoingLatency={defaultOutgoingLatency}
                     defaultIncommingLatency={defaultIncommingLatency}
                     key={id}
@@ -82,9 +85,11 @@ function ConnectionHandler({
     serverStub,
     defaultIncommingLatency,
     defaultOutgoingLatency,
+    defaultNetworkSettingsCollapsed,
 }: {
     defaultIncommingLatency?: number
     defaultOutgoingLatency?: number
+    defaultNetworkSettingsCollapsed?: boolean
     serverStub: ServerStub
     id: string
     children: (rootStore: RootStore) => JSX.Element
@@ -95,6 +100,7 @@ function ConnectionHandler({
     const [outgoingLatency, setOutgoingLatency] = useState(defaultOutgoingLatency ?? 0)
     const [randomizeIncommingLatency, setRandomizeIncommingLatency] = useState(false)
     const [randomizeOutgoingLatency, setRandomizeOutgoingLatency] = useState(false)
+    const [networkSettingsCollapsed, setNetworkSettingsCollapsed] = useState(defaultNetworkSettingsCollapsed ?? true)
 
     useEffect(() => {
         if (randomizeIncommingLatency) {
@@ -154,49 +160,57 @@ function ConnectionHandler({
                     {connected ? "disconnect" : "connect"}
                 </button>
             </div>
-            <div className="mb-3 d-flex flex-row align-items-start">
-                <label className="col-sm-4 col-form-label me-2 text-nowrap">Incomming Latency</label>
-                <div className="d-flex flex-column flex-grow-1">
-                    <input
-                        className="form-control"
-                        type="number"
-                        disabled={randomizeIncommingLatency}
-                        onChange={(e) => setIncommingLatency(e.target.valueAsNumber)}
-                        value={incommingLatency}
-                    />
-                    <div className="d-flex flex-row mt-2">
+            <button
+                onClick={() => setNetworkSettingsCollapsed(!networkSettingsCollapsed)}
+                className={`border accordion-button mb-3 ${networkSettingsCollapsed ? "collapsed" : ""}`}
+                type="button">
+                Network Settings
+            </button>
+            <div className={`accordion-collapse ${networkSettingsCollapsed ? "collapse" : ""}`}>
+                <div className="mb-3 d-flex flex-row align-items-start">
+                    <label className="col-sm-4 col-form-label me-2 text-nowrap">Incomming Latency</label>
+                    <div className="d-flex flex-column flex-grow-1">
                         <input
-                            checked={randomizeIncommingLatency}
-                            onChange={(e) => setRandomizeIncommingLatency(e.target.checked)}
-                            className="form-check-input me-2"
-                            type="checkbox"
+                            className="form-control"
+                            type="number"
+                            disabled={randomizeIncommingLatency}
+                            onChange={(e) => setIncommingLatency(e.target.valueAsNumber)}
+                            value={incommingLatency}
                         />
-                        <label className="form-check-label">Randomize</label>
+                        <div className="d-flex flex-row mt-2">
+                            <input
+                                checked={randomizeIncommingLatency}
+                                onChange={(e) => setRandomizeIncommingLatency(e.target.checked)}
+                                className="form-check-input me-2"
+                                type="checkbox"
+                            />
+                            <label className="form-check-label">Randomize</label>
+                        </div>
+                    </div>
+                </div>
+                <div className="mb-3 d-flex flex-row align-items-start">
+                    <label className="col-sm-4 col-form-label me-2 text-nowrap">Outgoing Latency</label>
+                    <div className="d-flex flex-column flex-grow-1">
+                        <input
+                            className="form-control"
+                            type="number"
+                            disabled={randomizeOutgoingLatency}
+                            onChange={(e) => setOutgoingLatency(e.target.valueAsNumber)}
+                            value={outgoingLatency}
+                        />
+                        <div className="d-flex flex-row mt-2">
+                            <input
+                                checked={randomizeOutgoingLatency}
+                                onChange={(e) => setRandomizeOutgoingLatency(e.target.checked)}
+                                className="form-check-input me-2"
+                                type="checkbox"
+                            />
+                            <label className="form-check-label">Randomize</label>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div className="mb-3 d-flex flex-row align-items-start">
-                <label className="col-sm-4 col-form-label me-2 text-nowrap">Outgoing Latency</label>
-                <div className="d-flex flex-column flex-grow-1">
-                    <input
-                        className="form-control"
-                        type="number"
-                        disabled={randomizeOutgoingLatency}
-                        onChange={(e) => setOutgoingLatency(e.target.valueAsNumber)}
-                        value={outgoingLatency}
-                    />
-                    <div className="d-flex flex-row mt-2">
-                        <input
-                            checked={randomizeOutgoingLatency}
-                            onChange={(e) => setRandomizeOutgoingLatency(e.target.checked)}
-                            className="form-check-input me-2"
-                            type="checkbox"
-                        />
-                        <label className="form-check-label">Randomize</label>
-                    </div>
-                </div>
-            </div>
-            <div className="flex-grow-1 flex-basis-0 border border-2 rounded-3">
+            <div className="flex-basis-0 border border-2 rounded-3">
                 {connection == null ? (
                     connected ? (
                         "Connecting ..."

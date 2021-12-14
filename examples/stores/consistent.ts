@@ -1,4 +1,4 @@
-import { State, Universe } from "co-consistent"
+import { Clock, State, Universe } from "co-consistent"
 import { Action, Store, StoreLink, Subscriber } from "co-share"
 
 export class ConsistentStore extends Store {
@@ -13,7 +13,7 @@ export class ConsistentStore extends Store {
     )
 
     private readonly universe: Universe<ContinousState>
-    public readonly clock: WarpableClock
+    public readonly clock: Clock
 
     public readonly smoothedRef: { state: SmoothState | undefined; time: number | undefined } = {
         state: undefined,
@@ -23,12 +23,15 @@ export class ConsistentStore extends Store {
 
     constructor(private readonly onServer: boolean, time: number, value: number, directionInverted: boolean) {
         super()
-        this.clock = new WarpableClock(time, () => (global.window == null ? 0 : window.performance.now()))
+        this.clock = new Clock(time, global.window == null ? () => 0 : () => window.performance.now())
         this.universe = new Universe(
             () => new ContinousState(0, false),
             (a1, a2) => a1.id - a2.id,
             2000
         )
+        if (!onServer) {
+            setTimeout(() => this.informTime())
+        }
 
         this.universe.insert(
             {
@@ -41,13 +44,19 @@ export class ConsistentStore extends Store {
         )
     }
 
-    warpTime = Action.create(this, "changeTime", (origin, by: number) => this.clock.jump(by))
+    changeTime = Action.create(this, "changeTime", (origin, by: number) => {
+        if (this.onServer) {
+            throw new Error("should not warp time on the server")
+        }
+        this.clock.change(by, 0.5)
+        this.clock.wait(Math.max(500, by * 2)).then(() => this.informTime())
+    })
 
     informTime = Action.create(this, "informTime", (origin, currentTime?: number) => {
         if (origin == null) {
             this.informTime.publishTo({ to: "one", one: this.mainLink }, this.clock.getCurrentTime())
-        } else if (currentTime != null) {
-            this.warpTime.publishTo({ to: "one", one: origin }, this.clock.getCurrentTime() - currentTime)
+        } else if (currentTime != null && this.onServer) {
+            this.changeTime.publishTo({ to: "one", one: origin }, this.clock.getCurrentTime() - currentTime)
         }
     })
 
@@ -61,12 +70,10 @@ export class ConsistentStore extends Store {
             if (stateTime == null || id == null) {
                 return
             }
-            this.warpTime.publishTo({ to: "one", one: origin }, currentTime - stateTime)
             if (stateTime > currentTime) {
                 const jumpBy = stateTime - currentTime
                 if (this.onServer) {
-                    //the server's clock should not jump, therefore we delay the action insertion
-                    await new Promise((resolve) => setTimeout(resolve, jumpBy))
+                    await this.clock.wait(jumpBy)
                 } else {
                     this.clock.jump(jumpBy)
                 }
@@ -177,49 +184,4 @@ function applySmoothing(
 
 function limitAbs(value: number, limit: number): number {
     return Math.max(-limit, Math.min(limit, value))
-}
-
-class WarpableClock {
-    private realTimeAtStateTime: number
-    private goalOffset: number | undefined
-    private goalOffsetStartRealTime: number | undefined
-
-    constructor(private stateTime: number, private readonly getRealTime: () => number) {
-        this.realTimeAtStateTime = this.getRealTime()
-    }
-
-    private computeCurrentStateTime(realTime: number): number {
-        let changeThroughGoal = 0
-        if (this.goalOffset != null && this.goalOffsetStartRealTime != null) {
-            const timeSinceGoalSet = Math.max(0, realTime - this.goalOffsetStartRealTime)
-            timeSinceGoalSet * 0.1
-            changeThroughGoal = Math.min(Math.abs(this.goalOffset), timeSinceGoalSet)
-            if (this.goalOffset < 0) {
-                changeThroughGoal = -changeThroughGoal
-            }
-        }
-        return this.stateTime + (realTime - this.realTimeAtStateTime) + changeThroughGoal
-    }
-
-    getCurrentTime(): number {
-        return this.computeCurrentStateTime(this.getRealTime())
-    }
-
-    waitUntil(time: number): Promise<void> {
-        
-    }
-
-    jump(by: number): void {
-        if (by < 0) {
-            const newRealTime = this.getRealTime()
-            this.stateTime = this.computeCurrentStateTime(newRealTime)
-            this.realTimeAtStateTime = newRealTime
-            this.goalOffsetStartRealTime = newRealTime
-            this.goalOffset = by
-        } else {
-            this.goalOffset = undefined
-            this.goalOffsetStartRealTime = undefined
-            this.stateTime += by
-        }
-    }
 }

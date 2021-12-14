@@ -16,6 +16,7 @@ export default function Index() {
                     <Simulator
                         defaultIncommingLatency={500}
                         defaultOutgoingLatency={500}
+                        defaultNetworkSettingsCollapsed={false}
                         twoClients
                         initStores={(rootStore) =>
                             rootStore.addStore(new ConsistentStore(true, 0, 0, false), "consistent")

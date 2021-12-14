@@ -29,7 +29,7 @@ export class ServerStub {
                 id,
             },
             disconnect: () => clientConnection.serverDisconnected(),
-            publish: (...message) => clientConnection.sendToClient(message),
+            publish: (...message) => clientConnection.sendToClient(JSON.parse(JSON.stringify(message))),
             receive: () => clientToServerSubject,
         }
         if (this.log) {
@@ -54,7 +54,7 @@ export class SimulatedConnection implements Connection {
     }
 
     publish(id: StoreLinkId, actionIdentifier: ActionIdentifier, ...params: any[]): void {
-        setTimeout(() => this.clientToServerSubject.next([id, actionIdentifier, ...params]), this.outgoingLatency)
+        setTimeout(() => this.clientToServerSubject.next(JSON.parse(JSON.stringify([id, actionIdentifier, ...params]))), this.outgoingLatency)
     }
 
     sendToClient(message: ConnectionMessage): void {

@@ -9,8 +9,8 @@ Javascript framework for easily building shared applications such as chats and g
 
 ![Transformable Example](transformable-example.gif)
 
-*A shared 3D Cube with "Alice" and "Bob" as **simulated** users.  
-The [Example](https://cocoss-org.github.io/co-share/transformable/) was built with `co-share` and [react-three-fiber](https://github.com/pmndrs/react-three-fiber)*
+_A shared 3D Cube with "Alice" and "Bob" as **simulated** users.  
+The [Example](https://cocoss-org.github.io/co-share/transformable/) was built with `co-share` and [react-three-fiber](https://github.com/pmndrs/react-three-fiber)_
 
 `npm i co-share`
 
@@ -23,7 +23,6 @@ We propose the abstraction of **shared stores** to distribute logic and data bet
 By using Javascript & Node.js, the same code can be used on the client and the server to carry out the **platform-independent communication**.
 
 ## [**Tutorial**](https://cocoss-org.github.io/co-share/counter)
-
 
 We will build a globally synchronized counter and display it using `react`. Every client can increase the counter.
 
@@ -44,6 +43,7 @@ _The code for each example can be found on the respective pages_
 -   [Optimistic Lockable](https://cocoss-org.github.io/co-share/optimistic-lockable) - performance optimize lockable that allows for optimistic behaviour and error correction
 -   [Whiteboard](https://cocoss-org.github.io/co-share/whiteboard) - collaborative drawing on a shared whiteboard
 -   [Transformable](https://cocoss-org.github.io/co-share/transformable) - shared 3D transformation
+-   [Consistent](https://cocoss-org.github.io/co-share/consistent) - continous states with **client-side prediction**, **lag-compensation** and **smoothing** (using [co-consistent](https://github.com/cocoss-org/co-consistent))
 
 ### An extra Project with a server/client architecture using SocketIO
 

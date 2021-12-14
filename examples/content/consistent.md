@@ -1,9 +1,9 @@
 # Consistent Example
 
 We synchronize a ball that bounces off walls. All clients can invert the direction.  
-This example is very tricky because you can not lock the ball to one player.  
-The simplest solution would be let the server execute the inversion and confirm it to the client. However, this is slow and we want **client side prediction** and **lag-compensation**.  
-We use the library [co-consistent](https://github.com/cocoss-org/co-consistent) and it's concept of _extrapolatable states_ to assure consistent behaviour at all paricipants.
+This example is tricky because you can not lock the ball to one player.  
+The simplest solution would let the server execute the inversion and confirm it to the client. However, this is slow, and we want **client-side prediction** and **lag-compensation**.  
+We use the library [co-consistent](https://github.com/cocoss-org/co-consistent) and its concept of _extrapolatable states_ to assure consistent behaviour at all participants.  
 After calculating a consistent state on all clients, we applied a **smoothing layer** to have a good UX even when lagging. Our example provides a button to disable this smoothing at each client.
 
 You can test the correctness even when changing or randomizing the simulated **latency**.
@@ -35,12 +35,15 @@ export class ConsistentStore extends Store {
 
     constructor(private readonly onServer: boolean, time: number, value: number, directionInverted: boolean) {
         super()
-        this.clock = new Clock(time, () => (global.window == null ? 0 : window.performance.now()))
+        this.clock = new Clock(time, global.window == null ? () => 0 : () => window.performance.now())
         this.universe = new Universe(
             () => new ContinousState(0, false),
             (a1, a2) => a1.id - a2.id,
             2000
         )
+        if (!onServer) {
+            setTimeout(() => this.informTime())
+        }
 
         this.universe.insert(
             {
@@ -52,6 +55,22 @@ export class ConsistentStore extends Store {
             new ContinousState(value, directionInverted)
         )
     }
+
+    changeTime = Action.create(this, "changeTime", (origin, by: number) => {
+        if (this.onServer) {
+            throw new Error("should not warp time on the server")
+        }
+        this.clock.change(by, 0.5)
+        this.clock.wait(Math.max(500, by * 2)).then(() => this.informTime())
+    })
+
+    informTime = Action.create(this, "informTime", (origin, currentTime?: number) => {
+        if (origin == null) {
+            this.informTime.publishTo({ to: "one", one: this.mainLink }, this.clock.getCurrentTime())
+        } else if (currentTime != null && this.onServer) {
+            this.changeTime.publishTo({ to: "one", one: origin }, this.clock.getCurrentTime() - currentTime)
+        }
+    })
 
     invert = Action.create(this, "invert", async (origin, stateTime?: number, id?: number) => {
         let currentTime = this.clock.getCurrentTime()
@@ -66,8 +85,7 @@ export class ConsistentStore extends Store {
             if (stateTime > currentTime) {
                 const jumpBy = stateTime - currentTime
                 if (this.onServer) {
-                    //the server's clock should not jump, therefore we delay the action insertion
-                    await new Promise((resolve) => setTimeout(resolve, jumpBy))
+                    await this.clock.wait(jumpBy)
                 } else {
                     this.clock.jump(jumpBy)
                 }
@@ -88,14 +106,10 @@ export class ConsistentStore extends Store {
             currentTime,
             stateTime
         )
-        this.invert.publishTo(
-            origin == null ? { to: "all" } : { to: "all-except-one", except: origin },
-            currentTime,
-            id
-        )
+        this.invert.publishTo(origin == null ? { to: "all" } : { to: "all-except-one", except: origin }, stateTime, id)
     })
 
-    getCurrentValue(): number {
+    getCurrentValue(smoothed: boolean): number {
         const realStateTime = this.clock.getCurrentTime()
         const entry = this.universe.history[this.universe.history.length - 1]
         this.universe.applyStateAt(this.realStateRef, entry, realStateTime)
@@ -108,12 +122,12 @@ export class ConsistentStore extends Store {
             value = this.realStateRef.value
         } else {
             applySmoothing(this.smoothedRef.state, this.smoothedRef.time, this.realStateRef, realStateTime)
-            const abs = Math.abs(this.smoothedRef.state.value)
-            const backwards = Math.floor(abs) % 2 === 1
-            value = backwards ? 1 - (abs % 1) : abs % 1
+            value = smoothed ? this.smoothedRef.state.value : this.realStateRef.value
         }
         this.smoothedRef.time = realStateTime
-        return value
+        const abs = Math.abs(value)
+        const backwards = Math.floor(abs) % 2 === 1
+        return backwards ? 1 - (abs % 1) : abs % 1
     }
 
     onUnlink(link: StoreLink): void {}
@@ -174,7 +188,6 @@ function applySmoothing(
     const valueReal = realState.value
     const valueSmoothed = smoothState.value
 
-    //we are overshooting
     const vd = (velocityReal + (0.05 * (valueReal - valueSmoothed)) / deltaTime) / 1.05
     smoothState.velocity += limitAbs(vd - smoothState.velocity, velocity * deltaTime * 0.1)
 
@@ -199,20 +212,22 @@ function ConsistentExamplePage({ rootStore }: { rootStore: RootStore }) {
         rootStore
     )
 
+    const [smoothing, setSmoothing] = useState(true)
+
     const [{ marginLeft, time }, setState] = useState(() => ({
-        marginLeft: calculateMargin(store.getCurrentValue()),
-        time: store.clock.getCurrentTime(),
+        marginLeft: calculateMargin(store.getCurrentValue(smoothing)),
+        time: store.clock.getCurrentTime() / 1000,
     }))
 
     useEffect(() => {
         const ref = window.setInterval(() => {
             setState({
-                time: store.clock.getCurrentTime(),
-                marginLeft: calculateMargin(store.getCurrentValue()),
+                time: store.clock.getCurrentTime() / 1000,
+                marginLeft: calculateMargin(store.getCurrentValue(smoothing)),
             })
         }, 30)
         return () => window.clearInterval(ref)
-    }, [store])
+    }, [store, smoothing])
 
     return (
         <div className="d-flex flex-column m-3">
@@ -220,7 +235,18 @@ function ConsistentExamplePage({ rootStore }: { rootStore: RootStore }) {
                 <span>time: {time.toFixed(0)}</span>
                 <div style={{ width: "3rem", height: "3rem", marginLeft, background: "#f00", borderRadius: "100%" }} />
             </div>
-            <button onClick={() => store.invert()}>invert</button>
+            <button className="align-self-start mt-2 btn btn-outline-primary" onClick={() => store.invert()}>
+                invert
+            </button>
+            <div className="d-flex flex-row mt-2">
+                <input
+                    checked={smoothing}
+                    onChange={(e) => setSmoothing(e.target.checked)}
+                    className="form-check-input me-2"
+                    type="checkbox"
+                />
+                <label className="form-check-label">Smooting</label>
+            </div>
         </div>
     )
 }
