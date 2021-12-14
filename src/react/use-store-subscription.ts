@@ -1,5 +1,5 @@
-import { useLayoutEffect } from "react"
-import { retryWhen, delay, map, tap } from "rxjs/operators"
+import { useEffect } from "react"
+import { retryWhen, delay, map } from "rxjs/operators"
 import { clear, suspend } from "suspend-react"
 import { StoreFactory, Store, StoreLink, PathEntry, UnsubscribeAction, RootStore, rootStore } from ".."
 
@@ -30,7 +30,7 @@ export function useStoreSubscription<S extends Store>(
         [retryAfter, path, providedRootStore, rootStoreLink, ...(factoryDepends ?? []), useStoreSubscriptionSymbol]
     )
 
-    useLayoutEffect(() => {
+    useEffect(() => {
         ref.referenceCount += 1
         return () => {
             ref.referenceCount -= 1

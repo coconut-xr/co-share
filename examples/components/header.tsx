@@ -1,5 +1,5 @@
-import Link from 'next/link'
-import { useState } from 'react'
+import Link from "next/link"
+import { useState } from "react"
 
 const pages: Array<{ title: string; url: string }> = [
     {
@@ -34,6 +34,10 @@ const pages: Array<{ title: string; url: string }> = [
         title: "Transformable",
         url: "/transformable",
     },
+    {
+        title: "Consistent",
+        url: "/consistent",
+    },
 ]
 
 export function Header({ selectedIndex }: { selectedIndex: number }) {
@@ -42,9 +46,7 @@ export function Header({ selectedIndex }: { selectedIndex: number }) {
         <nav className="navbar navbar-expand-lg navbar-light bg-light">
             <div className="container-fluid">
                 <Link href="/" passHref>
-                    <a className="navbar-brand">
-                        co-share examples
-                    </a>
+                    <a className="navbar-brand">co-share examples</a>
                 </Link>
                 <button
                     className="navbar-toggler"
@@ -61,11 +63,15 @@ export function Header({ selectedIndex }: { selectedIndex: number }) {
                     <ul className="navbar-nav">
                         {pages.map(({ title, url }, index) => (
                             <li key={title} className="nav-item">
-                                <Link href={url} passHref>
-                                    <a className={`nav-link ${index === selectedIndex ? "active" : ""}`}>
+                                {index === selectedIndex ? (
+                                    <span style={{ cursor: "pointer" }} className="active nav-link">
                                         {title}
-                                    </a>
-                                </Link>
+                                    </span>
+                                ) : (
+                                    <Link href={url} passHref>
+                                        <a className="nav-link">{title}</a>
+                                    </Link>
+                                )}
                             </li>
                         ))}
                     </ul>

@@ -100,7 +100,7 @@ export function MessagesSamplePage({ rootStore }: { rootStore: RootStore }): JSX
 
     return (
         <div className="p-3">
-            <h5>Clients</h5>
+            <h5>Clients {store.mainLink.id}</h5>
             {clients.map((client) => (
                 <Client sendMessage={store.sendMessage.bind(store, id)} client={client} key={client} />
             ))}

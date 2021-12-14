@@ -1,6 +1,6 @@
 import { Action, Request, Store, StoreLink, Subscriber } from "co-share"
 import { of } from "rxjs"
-import { delay, tap } from "rxjs/operators"
+import { tap } from "rxjs/operators"
 import create, { StoreApi } from "zustand/vanilla"
 
 export class LockableStore extends Store {
@@ -35,7 +35,7 @@ export class LockableStore extends Store {
     })
 
     setSliderLock: Request<this, [string], boolean> = Request.create(this, "setSliderLock", (origin, owner: string) => {
-        return (origin == null ? this.setSliderLock.publishTo(this.mainLink, owner) : of(true).pipe(delay(1000))).pipe(
+        return (origin == null ? this.setSliderLock.publishTo(this.mainLink, owner) : of(true)).pipe(
             tap((approved) => {
                 if (approved) {
                     this.forceSliderLock(owner)

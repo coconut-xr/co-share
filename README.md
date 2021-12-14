@@ -63,6 +63,7 @@ _The code for each example can be found on the respective pages_
 -   [Optimistic Lockable](https://cocoss-org.github.io/co-share/optimistic-lockable) - performance optimize lockable that allows for optimistic behaviour and error correction
 -   [Whiteboard](https://cocoss-org.github.io/co-share/whiteboard) - collaborative drawing on a shared whiteboard
 -   [Transformable](https://cocoss-org.github.io/co-share/transformable) - shared 3D transformation
+-   [Consistent](https://cocoss-org.github.io/co-share/consistent) - continous states with **client-side prediction**, **lag-compensation** and **smoothing** (using [co-consistent](https://github.com/cocoss-org/co-consistent))
 
 ### An extra Project with a server/client architecture using SocketIO
 

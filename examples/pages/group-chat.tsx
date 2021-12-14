@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import React, { Suspense, useMemo, useRef, useState } from "react"
 import { RootStore } from "co-share"
 import { Group, GroupChatListStore, GroupChatStore, Message } from "../stores/group-chat"
 import create from "zustand"

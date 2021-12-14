@@ -1,6 +1,6 @@
 {
     "name": "co-share",
-    "version": "3.2.3",
+    "version": "3.2.4",
     "main": "",
     "description": "A Javascript framework for easily building shared applications such as chats and games",
     "homepage": "https://cocoss-org.github.io/co-share",

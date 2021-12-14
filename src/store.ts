@@ -59,6 +59,7 @@ export abstract class Store {
         connection
             .receive()
             .pipe(
+                takeUntil(onDisconnect),
                 filter(([_id]) => id === _id),
                 tap(([, actionName, ...params]) => {
                     const action = this.actionMap.get(actionName)
@@ -78,8 +79,7 @@ export abstract class Store {
                 finalize(() => {
                     this.linkSet.delete(storeLink)
                     this.onUnlink(storeLink)
-                }),
-                takeUntil(onDisconnect)
+                })
             )
             .subscribe()
 
