@@ -42,7 +42,7 @@ export class LockableStore extends Store {
     })
 
     setSliderLock: Request<this, [string], boolean> = Request.create(this, "setSliderLock", (origin, owner: string) => {
-        return (origin == null ? this.setSliderLock.publishTo(this.mainLink, owner) : of(true).pipe(delay(1000))).pipe(
+        return (origin == null ? this.setSliderLock.publishTo(this.mainLink, owner) : of(true)).pipe(
             tap((approved) => {
                 if (approved) {
                     this.forceSliderLock(owner)
