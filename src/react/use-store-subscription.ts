@@ -1,4 +1,5 @@
 import { useEffect } from "react"
+import { firstValueFrom } from "rxjs"
 import { retryWhen, delay, map } from "rxjs/operators"
 import { clear, suspend } from "suspend-react"
 import { StoreFactory, Store, StoreLink, PathEntry, UnsubscribeAction, RootStore, rootStore } from ".."
@@ -16,9 +17,8 @@ export function useStoreSubscription<S extends Store>(
     const ref = suspend(
         () =>
             //this process should be canceled (wait for react to incorporate that feature)
-            providedRootStore
-                .subscribe<S>(path, rootStoreLink, storeFactory)
-                .pipe(
+            firstValueFrom(
+                providedRootStore.subscribe<S>(path, rootStoreLink, storeFactory).pipe(
                     retryWhen((error) => error.pipe(/**tap(console.error),*/ delay(retryAfter))),
                     map(([store, storeLink]) => ({
                         store,
@@ -26,7 +26,7 @@ export function useStoreSubscription<S extends Store>(
                         referenceCount: 0,
                     }))
                 )
-                .toPromise(),
+            ),
         [retryAfter, path, providedRootStore, rootStoreLink, ...(factoryDepends ?? []), useStoreSubscriptionSymbol]
     )
 
