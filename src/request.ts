@@ -1,4 +1,4 @@
-import { EMPTY, merge, MonoTypeOperatorFunction, Observable, Subject, throwError } from "rxjs"
+import { EMPTY, merge, MonoTypeOperatorFunction, Observable, Subject, Subscription, throwError } from "rxjs"
 import { catchError, filter, take, takeUntil, tap } from "rxjs/operators"
 import { Store, UnboundAction } from "."
 import { Action } from "./action"
@@ -86,37 +86,53 @@ function createUnboundRequest<S extends Store, Params extends Array<any>, Result
             const id = Math.round(Math.random() * Number.MAX_SAFE_INTEGER)
             const filterId = filter<[number, any]>(([observableId]) => observableId === id)
             let hasEnded = false
-            const subscription = merge(
-                responseNextSubject.pipe(
-                    filterId,
-                    takeOneOptional(!multipleResponses),
-                    tap(([observableId, next]) => {
-                        subscriber.next(next)
-                        if (!multipleResponses) {
+            const subscription = new Subscription()
+
+            subscription.add(
+                responseNextSubject
+                    .pipe(
+                        filterId,
+                        tap(([observableId, next]) => {
+                            if (multipleResponses) {
+                                subscriber.next(next)
+                            } else {
+                                hasEnded = true
+                                subscriber.next(next)
+                                subscriber.complete()
+                            }
+                        }),
+                        takeOneOptional(!multipleResponses)
+                    )
+                    .subscribe()
+            )
+
+            subscription.add(
+                responseErrorSubject
+                    .pipe(
+                        filterId,
+                        tap(([observableId, error]) => {
+                            hasEnded = true
+                            subscriber.error(error)
+                        })
+                    )
+                    .subscribe()
+            )
+
+            subscription.add(
+                responseCompleteSubject
+                    .pipe(
+                        filter((observableId) => observableId === id),
+                        tap(() => {
                             hasEnded = true
                             subscriber.complete()
-                        }
-                    })
-                ),
-                responseErrorSubject.pipe(
-                    filterId,
-                    tap(([observableId, error]) => {
-                        hasEnded = true
-                        subscriber.error(error)
-                    })
-                ),
-                responseCompleteSubject.pipe(
-                    filter((observableId) => observableId === id),
-                    tap(() => {
-                        hasEnded = true
-                        subscriber.complete()
-                    })
-                )
-            ).subscribe()
+                        })
+                    )
+                    .subscribe()
+            )
             requestAction.publishTo([target], id, ...params)
             return () => {
+                subscription.unsubscribe()
                 if (!hasEnded) {
-                    subscription.unsubscribe()
                     cancelAction.publishTo([target], id)
                 }
             }
